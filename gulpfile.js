@@ -1,8 +1,9 @@
 var gulp = require('gulp');
 var del = require('del');
+var concat = require('gulp-concat');
 // Sass & CSS
 var sass = require('gulp-sass');
-var neat = require('node-neat');
+var neat = require('node-neat').includePaths;
 var autoprefixer = require('gulp-autoprefixer');
 var cmq = require('gulp-combine-media-queries');
 var csso = require('gulp-csso');
@@ -12,52 +13,74 @@ var typogr = require('gulp-typogr');
 var inject = require('gulp-inject');
 var include = require('gulp-file-include');
 // Javascript
+var coffee = require('gulp-coffee');
 var uglify = require('gulp-uglify');
 // Servers
 var browserSync = require('browser-sync');
 
-var neatPaths = neat.includePaths;
+var paths = {
+  src: 'src',
+  dist: 'dist',
+
+  content: 'src/markup/**/*.html',
+  contentPath: 'src/markup',
+  html: 'dist/**/*.html',
+
+  sass: 'src/stylesheets/*.scss',
+  sassPath: 'src/stylesheets',
+  css: 'dist/css/**/*.css',
+  cssPath: 'dist/css',
+
+  coffee: 'src/scripts/**/*.coffee',
+  coffeePath: 'src/scripts',
+  js: 'dist/js/**/*.js',
+  jsPath: 'dist/js'
+};
 
 gulp.task('default', ['clean', 'build']);
 
 // Sass & CSS
 
 gulp.task('sass', function() {
-  return compressed = gulp.src('src/stylesheets/*.scss')
+  return compressed = gulp.src(paths.sass)
     .pipe(sass({
-      includePaths: neatPaths
+      includePaths: neat
     }))
     .pipe(uncss({
-      html: ['src/**/*.html']
+      html: [paths.content]
     }))
     .pipe(cmq())
     .pipe(autoprefixer())
     .pipe(csso())
-    .pipe(gulp.dest('dist/css'))
+    .pipe(gulp.dest(paths.cssPath))
     .pipe(browserSync.reload({
       stream: true
     }));
 });
 
 gulp.task('sass:debug', function() {
-  return gulp.src('src/stylesheets/*.scss')
+  return gulp.src(paths.sass)
     .pipe(sass({
       outputStyle: 'nested',
-      includePaths: neatPaths
+      includePaths: neat
     }))
     .pipe(sass().on('error', sass.logError))
     .pipe(uncss({
-      html: ['src/**/*.html']
+      html: [paths.content]
     }))
     .pipe(cmq())
     .pipe(autoprefixer())
-    .pipe(gulp.dest('dist/css'));
+    .pipe(gulp.dest(paths.cssPath));
+});
+
+gulp.task('clean:sass', function() {
+  return del(paths.cssPath)
 });
 
 // HTML
 
-gulp.task('html', ['sass', 'js'], function() {
-  var sources = gulp.src(['dist/**/*.js', 'dist/**/*.css'], {read: false});
+gulp.task('html', ['sass', 'coffee'], function() {
+  var sources = gulp.src([paths.js, paths.css], {read: false});
 
   return gulp.src(['src/markup/**/*.html', '!src/markup/{includes,includes/**}'])
     .pipe(include({
@@ -65,12 +88,12 @@ gulp.task('html', ['sass', 'js'], function() {
       basepath: 'src/markup/includes'
     }))
     .pipe(inject(sources, {
-      ignorePath: '/dist'
+      ignorePath: paths.dist
     }))
     .pipe(typogr({
       only: ['amp', 'widont', 'smartypants']
     }))
-    .pipe(gulp.dest('dist/'))
+    .pipe(gulp.dest(paths.dist))
     .pipe(browserSync.reload({
       stream: true
     }));
@@ -78,21 +101,39 @@ gulp.task('html', ['sass', 'js'], function() {
 
 // Javascript
 
-gulp.task('js', function() {
-  return gulp.src('src/scripts/**/*.js')
-    .pipe(uglify({
-      mangle: true
+gulp.task('coffee', function() {
+  return gulp.src(paths.coffee)
+    .pipe(coffee({
+      bare: true
     }))
-    .pipe(gulp.dest('dist/js'))
+    .pipe(uglify())
+    .pipe(concat('main.js'))
+    .pipe(gulp.dest(paths.jsPath))
     .pipe(browserSync.reload({
       stream: true
     }));
 });
 
+gulp.task('coffee:debug', function() {
+  return gulp.src(paths.coffee)
+    .pipe(coffee({
+      bare: true
+    }))
+    .pipe(concat('main.js'))
+    .pipe(gulp.dest(paths.jsPath))
+    .pipe(browserSync.reload({
+      stream: true
+    }));
+});
+
+gulp.task('clean:coffee', function() {
+  return del(paths.jsPath)
+});
+
 // Clean & Build
 
 gulp.task('clean', function() {
-  del('dist');
+  del(paths.dist);
 });
 
 gulp.task('build', ['html'], function() {
@@ -111,7 +152,7 @@ gulp.task('browserSync', function() {
 });
 
 gulp.task('watch', ['browserSync', 'build'], function () {
-  gulp.watch('src/stylesheets/**/*.scss', ['sass']);
-  gulp.watch('src/markup/**/*.html', ['html']);
-  gulp.watch('src/scripts/**/*.html', ['js']);
+  gulp.watch(paths.sass, ['sass']);
+  gulp.watch(paths.content, ['html']);
+  gulp.watch(paths.coffee, ['coffee']);
 });
