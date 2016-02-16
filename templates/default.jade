@@ -1,0 +1,14 @@
+include utils/_metadata.jade
+
+doctype html
+html
+  head
+    include partials/_head.jade
+  body
+    main(role="main", class="content")
+      block content
+        h1= title
+        p Get started!
+
+    include partials/_footer.jade
+  include partials/_scripts.jade
